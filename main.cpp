@@ -5,9 +5,14 @@
 #include <QDebug>
 #include <iostream>
 
-#define DEBUG_CMD_APP
+#include "alphabetafilter.h"
+#include "database.h"
+
+//#define DEBUG_CMD_APP
 
 using namespace std;
+
+
 
 int main(int argc, char *argv[])
 {
@@ -19,6 +24,21 @@ int main(int argc, char *argv[])
 	QTextStream fileText{&file};
 
 	QByteArray datum;
+	QString datum_str;
+	double outcome;
+
+	database* DB = nullptr;
+	QVariantList dataDB;
+
+	DB = database::getInstance();
+	DB->connectToDataBase(name_log_dir);
+
+	double alpha {0.85};
+	double beta {0.005};
+	double dt {1.0};
+
+	AlphaBetaFilter filter(alpha, beta, dt);
+
 
 #ifdef DEBUG_CMD_APP
 	string strDatum {};
@@ -38,6 +58,13 @@ int main(int argc, char *argv[])
 			datum = file.readLine();
 			datum = datum.trimmed();
 
+			dataDB.clear();
+			datum_str = QString(datum);
+			dataDB.append(datum_str);
+			outcome = filter.calculate(datum.toDouble());
+			datum_str = QString::number(outcome);
+			dataDB.append(datum_str);
+
 #ifdef DEBUG_CMD_APP
 			qDebug() << "V(" << i << ") = " << datum;
 			sum += datum.toDouble();
@@ -46,6 +73,7 @@ int main(int argc, char *argv[])
 #endif
 		}
 		file.close();
+		DB->closeDataBase();
 	}
 
 	return a.exec();
