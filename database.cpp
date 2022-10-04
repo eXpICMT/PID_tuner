@@ -44,8 +44,10 @@ bool database::inserIntoTable(QString table, const QVariantList &data)
 	if(table == TABLE1)
 	{
 		query.prepare("INSERT INTO " TABLE1 " ( "   TABLE1_U_REAL ", "             //0
-													TABLE1_U_EST  " ) "            //1
-					  "VALUES (:F1, :F2)");
+                                                    TABLE1_U_EST  " ) "            //1
+
+                      "VALUES (:F1, :F2)");
+
 		query.bindValue(":F1",       data[0]);
 		query.bindValue(":F2",       data[1]);
 	}
@@ -93,8 +95,8 @@ bool database::createTable()
 	if(!query.exec( "CREATE TABLE " TABLE1 " ("
 					"N INTEGER PRIMARY KEY AUTOINCREMENT, "
 					TABLE1_U_REAL    " NUMERIC    NOT NULL,"
-					TABLE1_U_EST     " NUMERIC    NOT NULL,"
-					") "
+                    TABLE1_U_EST     " NUMERIC    NOT NULL"
+                    " )"
 					))
 	{
 		qDebug() << "DataBase: error of create " << TABLE1;
