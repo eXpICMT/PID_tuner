@@ -16,10 +16,17 @@
 #define DATABASE_NAME       "db_pid_tuner_sql"
 #define FOLDER_DATABASE     "DataUser"
 
-#define TABLE1                  "PID_Tuner"
-#define TABLE1_N                "N"
-#define TABLE1_U_REAL           "U_Real"
-#define TABLE1_U_EST			"U_Est"
+#define TABLE1							"PID_Tuner"
+#define TABLE1_N						"N"
+#define TABLE1_U_REAL					"U_Real"
+#define TABLE1_U_EST_AB_FILT			"U_Est_ab_filter"
+#define TABLE1_U_EST_MEDIAN_ORD_1		"U_Est_median_1st_order"
+#define TABLE1_U_EST_MEDIAN_ORD_2		"U_Est_median_2nd_order"
+#define TABLE1_U_EST_MEDIAN_ORD_3		"U_Est_median_3d_order"
+#define TABLE1_U_EST_MEDIAN_ORD_4		"U_Est_median_4th_order"
+#define TABLE1_U_EST_MEDIAN_ORD_5		"U_Est_median_5th_order"
+#define TABLE1_U_EST_MEDIAN_ORD_6		"U_Est_track_du_filter"
+
 
 class database : public QObject
 {
