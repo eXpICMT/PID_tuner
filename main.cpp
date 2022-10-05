@@ -49,8 +49,9 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG_CMD_APP
 	string strDatum {};
-	int i {}, flag {0};
-	double du {}, u_prev {};
+    int i {};
+    double du_median {0.0}, u_prev_median {0.0};
+    double du_datum {0.0}, u_prev_datum {0.0};
 #endif
 
 	if(!file.open(QIODevice::ReadOnly | QIODevice::ExistingOnly))
@@ -82,27 +83,26 @@ int main(int argc, char *argv[])
 			qDebug() << "Median_2nd_order(" << i << ") = " << datum_str;
 			dataDB.append(datum_str);
 			outcome = median_filter_3d_order.calculation(outcome);
-			datum_str = QString::number(outcome);
+            datum_str = QString::number(outcome);
 			qDebug() << "Median_3d_order(" << i << ") = " << datum_str;
 			dataDB.append(datum_str);
-			if(flag)
-			{
-				du = outcome - u_prev;
-				flag = 0;
-			}
-			else
-			{
-				u_prev = outcome;
-				flag = 1;
-			}
-			if(du < 0.0)
-			{
-				outcome = u_prev;
-			}
-			datum_str = QString::number(outcome);
-			qDebug() << "Track_du_filter(" << i << ") = " << datum_str;
+
+            du_median = outcome - u_prev_median;
+            if(du_median >= 0)
+                u_prev_median = outcome;
+
+            datum_str = QString::number(u_prev_median);
+            qDebug() << "Track_du_filter_after_median(" << i << ") = " << datum_str;
 			dataDB.append(datum_str);
-			dataDB.append("0");
+
+            du_datum = datum.toDouble() - u_prev_datum;
+            if(du_datum >= 0)
+                u_prev_datum = datum.toDouble();
+
+            datum_str = QString::number(u_prev_datum);
+            qDebug() << "Track_du_filter_after_median(" << i << ") = " << datum_str;
+            dataDB.append(datum_str);
+
 			dataDB.append("0");
 
 #ifdef DATABASE_ON
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 #ifdef DATABASE_ON
 		DB->closeDataBase();
 #endif
-	}
 
-	return a.exec();
+	}
+    return 0;
 }

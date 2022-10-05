@@ -23,9 +23,9 @@
 #define TABLE1_U_EST_MEDIAN_ORD_1		"U_Est_median_1st_order"
 #define TABLE1_U_EST_MEDIAN_ORD_2		"U_Est_median_2nd_order"
 #define TABLE1_U_EST_MEDIAN_ORD_3		"U_Est_median_3d_order"
-#define TABLE1_U_EST_MEDIAN_ORD_4		"U_Est_median_4th_order"
-#define TABLE1_U_EST_MEDIAN_ORD_5		"U_Est_median_5th_order"
-#define TABLE1_U_EST_MEDIAN_ORD_6		"U_Est_track_du_filter"
+#define TABLE1_U_EST_MEDIAN_ORD_4		"U_Est_track_du_filter_of_median"
+#define TABLE1_U_EST_MEDIAN_ORD_5		"U_Est_track_du_filter_of_datum"
+#define TABLE1_U_EST_MEDIAN_ORD_6		"U_Est_median_6th_order"
 
 
 class database : public QObject

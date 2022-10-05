@@ -18,7 +18,9 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 DISTFILES += \
+	db_pid_tuner_sql10_22.db \
 	dups_sql09_22.db \
+	dups_sql09_22_093022_SoC.db \
 	readme.md \
 	test.csv \
 	test.txt
