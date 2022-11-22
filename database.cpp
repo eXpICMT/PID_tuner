@@ -44,24 +44,13 @@ bool database::inserIntoTable(QString table, const QVariantList &data)
 	if(table == TABLE1)
 	{
 		query.prepare("INSERT INTO " TABLE1 " ( "   TABLE1_U_REAL				", "		//0
-													TABLE1_U_EST_AB_FILT		", "		//1
-													TABLE1_U_EST_MEDIAN_ORD_1	", "		//2
-													TABLE1_U_EST_MEDIAN_ORD_2	", "		//3
-													TABLE1_U_EST_MEDIAN_ORD_3	", "		//4
-													TABLE1_U_EST_MEDIAN_ORD_4	", "		//5
-													TABLE1_U_EST_MEDIAN_ORD_5	", "		//6
-													TABLE1_U_EST_MEDIAN_ORD_6	" ) "		//7
-
-					  "VALUES (:F1, :F2, :F3, :F4, :F5, :F6, :F7, :F8)");
+													TABLE1_U_EST				", "		//1
+													TABLE1_I_REAL				" ) "
+					  "VALUES (:F1, :F2, :F3)");
 
 		query.bindValue(":F1",       data[0]);
 		query.bindValue(":F2",       data[1]);
 		query.bindValue(":F3",       data[2]);
-		query.bindValue(":F4",       data[3]);
-		query.bindValue(":F5",       data[4]);
-		query.bindValue(":F6",       data[5]);
-		query.bindValue(":F7",       data[6]);
-		query.bindValue(":F8",       data[7]);
 	}
 	else
 	{
@@ -107,13 +96,8 @@ bool database::createTable()
 	if(!query.exec( "CREATE TABLE " TABLE1 " ("
 					"N INTEGER PRIMARY KEY AUTOINCREMENT, "
 					TABLE1_U_REAL					" NUMERIC    NOT NULL,"
-					TABLE1_U_EST_AB_FILT			" NUMERIC    NOT NULL,"
-					TABLE1_U_EST_MEDIAN_ORD_1		" NUMERIC    NOT NULL,"
-					TABLE1_U_EST_MEDIAN_ORD_2		" NUMERIC    NOT NULL,"
-					TABLE1_U_EST_MEDIAN_ORD_3		" NUMERIC    NOT NULL,"
-					TABLE1_U_EST_MEDIAN_ORD_4		" NUMERIC    NOT NULL,"
-					TABLE1_U_EST_MEDIAN_ORD_5		" NUMERIC    NOT NULL,"
-					TABLE1_U_EST_MEDIAN_ORD_6		" NUMERIC    NOT NULL"
+					TABLE1_U_EST					" NUMERIC    NOT NULL,"
+					TABLE1_I_REAL					" NUMERIC    NOT NULL"
                     " )"
 					))
 	{

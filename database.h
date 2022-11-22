@@ -19,13 +19,9 @@
 #define TABLE1							"PID_Tuner"
 #define TABLE1_N						"N"
 #define TABLE1_U_REAL					"U_Real"
-#define TABLE1_U_EST_AB_FILT			"U_Est_ab_filter"
-#define TABLE1_U_EST_MEDIAN_ORD_1		"U_Est_median_1st_order"
-#define TABLE1_U_EST_MEDIAN_ORD_2		"U_Est_median_2nd_order"
-#define TABLE1_U_EST_MEDIAN_ORD_3		"U_Est_median_3d_order"
-#define TABLE1_U_EST_MEDIAN_ORD_4		"U_Est_track_du_filter_of_median"
-#define TABLE1_U_EST_MEDIAN_ORD_5		"U_Est_track_du_filter_of_datum"
-#define TABLE1_U_EST_MEDIAN_ORD_6		"U_Est_median_6th_order"
+#define TABLE1_U_EST					"U_Est"
+#define TABLE1_I_REAL					"I_Real"
+
 
 
 class database : public QObject
