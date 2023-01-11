@@ -1,238 +1,194 @@
 #include <QCoreApplication>
-
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
-//#include <iostream>
 #include <math.h>
-//#include "qtextstream.h"
-
-//#include "alphabetafilter.h"
-//#include "medianfilter.h"
 #include "database.h"
 #include <QStringList>
+#include "Eigen"
+#include <iostream>
+#include <QVector>
 
-#define DEBUG_CMD_APP
-#define DATABASE_ON
 
-int xFromLineOfTwoPoints(float y, float y1, float y2, int x1, int x2);
-						//		  0.9soc	1soc	  Uoc0.9  Uoc1
-int xFromLineOfTwoPoints(float y, float y1, float y2, int x1, int x2)
-{
-	int x = 0;
-	x = y-y1;
-	x *= (x2-x1);
-	x /= (y2-y1);
-	x += x1;
-	return x;
-}
+/*
+    Battery Model Parameters
 
-//using namespace std;
-float Uoc_100_soc = 51.14;//SOC = 100%
-float Uoc_90_soc = 49.89;//SOC = 90%
-float deltaU_R0 = Uoc_100_soc-47.31;//SOD phase
-float Ibat = 15.0;//SOD phase
-float R0_100_sod = deltaU_R0/Ibat;//SOD phase
-float R0_100_soc = {0.0};
-float t1 = 10.0;//SOD phase
-float t2 = 40.0;//Relax phase
-float Up_t_1_1 = 47.31;
-float Up_t_1_2 = 47.25;
-float dUp_t_1 = abs(Up_t_1_2-Up_t_1_1);//SOD phase, where I = 15.0 A, tau = 10 s
-float Up_t_2_1 = 50.06;//50.06
-float Up_t_2_2 = 50.67;
-float dUp_t_2_0 = abs(Up_t_2_2-Up_t_2_1);//(point,where t = 0) Relax phase, where I = 0.0, tau = 40 s
-//Borders of dUp_t_2_0/dUp_t_1 should be beyond of the range
-/* for example
-50.06 { 50.08, 50.16, 50.21 } 50.67
-	  \       manifold      /
+    Open Circuit Voltage
+
+    Uocv_100%       = 51.2
+    Uocv_90%        = 50.31
+    Uocv_80%        = 49.46
+    Uocv_70%        = 48.49
+
+    State of Charge
+
+    SOC_100%        = 15
+    SOC_90%         = 13.5
+    SOC_80%         = 12
+    SOC_70%         = 10.5
+
+    Internal Resistance
+
+    Rin-_100%       = (51.2 - 47.71)/15.1
+    Rin+_100%       = (59.71 - 50.67)/7.35
+
+    Rin-_90%        = (50.31 - 47.1)/15.1
+    Rin+_90%        = (58.78 - 49.98)/15.86
+
+    Rin-_80%        = (49.46 - 46.6)/15.09
+    Rin+_80%        = (54.9 - 49.14)/15.85
+
+    Rin-_70%        = (48.49 - 45.71)/15.1
+    Rin+_70%        = (53.83 - 48.38)/15.85
+
+    float SOC = 1+(Icnt/(15*3600));
+
 */
 
-QByteArray datum;
-QString datum_str;
-float outcome;
-int i {0}, r {0};
+//using namespace std;
+using Eigen::MatrixXf;
+using Eigen::MatrixXd;
 
-database* DB = nullptr;
-QVariantList dataDB;
-
-int main(int argc, char *argv[])
+int xFromLineOfTwoPoints(float y, float y1, float y2, int x1, int x2);
+    //		  0.9soc	1soc	  Uoc0.9  Uoc1
+int xFromLineOfTwoPoints(float y, float y1, float y2, int x1, int x2)
 {
+    int x = 0;
+    x = y-y1;
+    x *= (x2-x1);
+    x /= (y2-y1);
+    x += x1;
+    return x;
+}
 
-	QCoreApplication a(argc, argv);
-
-	QString name_log_dir = QCoreApplication::applicationDirPath();
-	QString filename1 = name_log_dir + "/t1_for_Up.txt";
-	QFile file1(filename1);
-	QTextStream fileText1{&file1};
-
-	QString filename2 = name_log_dir + "/t2_for_Up.txt";
-	QFile file2(filename2);
-	QTextStream fileText2{&file2};
-
-	QString csvname1 = name_log_dir + "/hppc_test_from_112122_rev.3.csv";
-	QFile csv1(csvname1);
-
-	QString filename3 = name_log_dir + "/coefs.txt";
-	QFile file3(filename3);
-	QTextStream fileText3{&file3};
-	QVector<QString> buffer;
-
-
-	float dU_p_i {0.0};
-	float temp {0.0};
-	float tau_p_mean {0.0};
-	float R_p_mean {0.0};
-	float C_p_mean {0.0};
-	float dU {0.0};
-	i = 0;
-	outcome = 0.0;
-
-	if(!file2.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)){
-		qWarning("The file 2 wasn't read");
-	}else{
-		while(!file2.atEnd()){
-			datum.clear();
-			datum = file2.readLine();
-			datum = datum.trimmed();
-			i++;
-			dU_p_i = abs(Up_t_2_2-datum.toFloat());
-			temp = dUp_t_2_0/dU_p_i;
-			temp = log(temp);
-			temp = 1/temp;
-			temp = i*temp;
-			outcome += temp;
-			qDebug() << "Time = " << i << "s, tau_meas = " << temp;
-			QString str = "Time = " + QString::number(i) + "s, tau_meas = " + QString::number(temp);
-			buffer.push_back(str);
-		}
-		tau_p_mean = outcome/i;
-		file2.close();
-	}
-	dU = dUp_t_2_0/i;
-	outcome = 0.0;
-	i = 0;
-	DB = database::getInstance();
-	DB->connectToDataBase(name_log_dir);
-
-	if(!file1.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)){
-		qWarning("The file 1 wasn't read");
-	}else{
-		while(!file1.atEnd()){
-			datum.clear();
-			datum = file1.readLine();
-			datum = datum.trimmed();
-			i++;
-			dU_p_i = abs(Up_t_1_2-datum.toFloat());
-			temp = i/tau_p_mean;
-			temp *= -1;
-			temp = exp(temp);
-			temp = 1 - temp;
-			temp = Ibat*temp;
-			temp = 1/temp;
-			temp *= dU_p_i;
-			outcome += temp;
-			qDebug() << "Time = " << i << "s, Rp_meas = " << temp;
-			QString str = "Time = " + QString::number(i) + "s, Rp_meas = " + QString::number(temp);
-			buffer.push_back(str);
-		}
-		R_p_mean = outcome/i;
-		qDebug() << "Corollary:";
-		QString str = "Corollary:";
-		buffer.push_back(str);
-		qDebug() << "tau_mean = " << tau_p_mean;
-		str = "tau_mean = " + QString::number(tau_p_mean);
-		buffer.push_back(str);
-		qDebug() << "R_mean = " << R_p_mean;
-		str = "R_mean = " + QString::number(R_p_mean);
-		buffer.push_back(str);
-		C_p_mean = tau_p_mean/R_p_mean;
-		qDebug() << "C_mean = " << C_p_mean;
-		str = "C_mean = " + QString::number(C_p_mean);
-		buffer.push_back(str);
-		qDebug() << "R_0 = " << R0_100_soc;
-		file1.close();
-	}
-
-	auto writeToFile = [&file3, buffer, &fileText3](){
-		file3.resize(0);
-		for(QString element : buffer)
-			fileText3 << element << Qt::endl;
-		file3.close();
-	};
-
-	if(file3.open(QIODevice::WriteOnly | QIODevice::ExistingOnly | QIODevice::Append | QIODevice::Text))
-		writeToFile();
-	else if(file3.open(QIODevice::WriteOnly | QIODevice::NewOnly | QIODevice::Append | QIODevice::Text))
-		writeToFile();
-
-	i = 0;
-	temp = 1/tau_p_mean;
-	temp *= -1;
-	temp = exp(temp);
-
-	auto constrain = [](float value, float max, float min){
-		if(value > max)value = max;
-		if(value < min)value = min;
-	};
-
-	if(!csv1.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)){
-		qWarning("The csv 1 wasn't read");
-	}else{
-		QTextStream in(&csv1);
-		float Icsv {0.0}, Ucsv {0.0}, Iprev {0.0}, Uprev {0.0}, dI {0.0};// dU {0.0};
-		float Icnt {0.0};
-		float temp1 {0.0};
-		float temp2 {0.0};
-		bool flag {false};
-		float R0 {0.0};
-		while(!in.atEnd()){
-			Iprev = Icsv;
-			Uprev = Ucsv;
-			QString line = in.readLine();
-			i++;
-			QStringList item = line.split(",");
-			Icsv = item.at(0).toFloat();
-			Ucsv = item.at(1).toFloat();
-			Icnt += Icsv;
-			float SOC = 1+(Icnt/(15*3600));
-			constrain(SOC, 1, 0.9);
-			float Uoc = xFromLineOfTwoPoints(SOC, 1, 0.9, Uoc_100_soc, Uoc_90_soc);
-			// - dUp_t_2_0*temp
-			temp = i /tau_p_mean;
-			temp *= -1;
-			temp = exp(temp);
-
-			if((Icsv < -1.0f) || (Icsv > 1.0f)){
-				//dU = dUp_t_1;
-				dU = dUp_t_2_0;
-				//if(Icsv < -1.0f)
-				//	R0 = R0_100_sod;
-				//if(Icsv > 1.0f)
-					R0 = abs((Ucsv - Uoc_100_soc)/Icsv);
-			}
-			else
-				dU = dUp_t_2_0;
+int main(int argc, char *argv[]){
+    database* DB = nullptr;
+    QVariantList dataDB;
+    QCoreApplication a(argc, argv);
+    QString name_log_dir = QCoreApplication::applicationDirPath();
+    QString csvname1 = name_log_dir + "/preparedTable.csv";
+    QFile csv1(csvname1);
+    QString filename1 = name_log_dir + "/coefs.txt";
+    QFile file1(filename1);
+    double SOC {1.0};
+    QVector<double> Ytemp;
+    QVector<double> Itemp;
 
 
-			temp1 = dU*temp;
+    auto constrain = [](float value, float max, float min){
+        if(value > max)value = max;
+        if(value < min)value = min;
+    };
 
-			float U_l = Uoc - temp1 + Icsv*R_p_mean*(1-temp) + Icsv*R0;
-			dI = Icsv - Iprev;
-			//dU = abs(Ucsv - Uprev);
-			dataDB.clear();
-			dataDB.append(QString::number(Ucsv));
-			dataDB.append(QString::number(U_l));
-			dataDB.append(QString::number(Icsv));
-			if(!DB->inserIntoTable(TABLE1, dataDB))
-			{
-				//TODO
-			}
-			qDebug() << "Line[" << i << "]";
-		}
-	}
-	csv1.close();
-	DB->closeDataBase();
 
+    DB = database::getInstance();
+    DB->connectToDataBase(name_log_dir);
+    int i = 0;
+
+    if(!csv1.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)){
+        qWarning("The csv 1 wasn't read");
+    }else{
+        QTextStream in(&csv1);
+        while(!in.atEnd()){
+
+            double Icsv {0.0}, Ucsv {0.0};
+            QString line = in.readLine();
+            QStringList item = line.split(",");
+            Icsv = item.at(0).toDouble();
+            Itemp.push_back(Icsv);
+            Ucsv = item.at(1).toDouble();
+            Ytemp.push_back(Ucsv);
+            //qDebug() << "Icsv[" << i << "] = " << Itemp.last() << "   Ucsv[" << i << "] = " << Ytemp.last();
+            //SOC += Icsv/(15*3600);
+            //qDebug() << "SOC[" << i << "] = " << SOC;
+            i++;
+            dataDB.clear();
+            dataDB.append(QString::number(Ucsv));
+            dataDB.append(QString::number(Ucsv));
+            dataDB.append(QString::number(Icsv));
+            if(!DB->inserIntoTable(TABLE1, dataDB))
+            {
+                //TODO
+            }
+        }
+    }
+
+    MatrixXd Y(Ytemp.size(), 1);
+    MatrixXd H(Ytemp.size(), 7), HTH (7, 7), Htransposed(7, Ytemp.size()), HTHinversed (7, 7);
+    MatrixXd Theta(7, 1);
+    i = 0;
+    while(i < Ytemp.size()){
+        Y(i,0) = Ytemp.at(i);
+        H(i, 0) = 1;//for K0
+        if(Itemp.at(i) > 0){
+            H(i, 1) = Itemp.at(i);//for I+
+            H(i, 2) = 0.0;//for I-
+        }else{
+            H(i, 1) = 0.0;
+            H(i, 2) = Itemp.at(i);
+        }
+        SOC += Itemp.at(i)/(15.0*3600.0);
+        H(i, 3) = 1/SOC;
+        H(i, 4) = SOC;
+        H(i, 5) = log(SOC);
+        H(i, 6) = log(1-SOC);
+        //std::cout << "Y(" <<i << ", 1) = " << Y(i,0) << std::endl;
+        i++;
+    }
+    Htransposed = H.transpose();
+    std::cout << "H.transpose():" << std::endl;
+    std::cout << Htransposed << std::endl;
+
+    //I HAVE INF and NAN values!!! it's a problem...
+/*
+    HTH = Htransposed*H;
+    std::cout << "HTH:" << std::endl;
+    std::cout << HTH << std::endl;
+    std::cout << "HTH.inverse():" << std::endl;
+    HTHinversed = HTH.inverse();
+    std::cout << HTHinversed << std::endl;
+    std::cout << "H.transpose():" << std::endl;
+    std::cout << Htransposed << std::endl;
+    std::cout << "Theta:" << std::endl;
+    Theta = HTHinversed*Htransposed;
+    Theta *= Y;
+    std::cout << Theta << std::endl;
+*/
+
+
+    //qDebug() << "Itemp.size = " << Itemp.size() << "   Ytemp.size = " << Ytemp.size();
+    //std::cout << Y << std::endl;
+    //std::cout << H << std::endl;
+    csv1.close();
+    DB->closeDataBase();
+/*
+    MatrixXd m(2,2), l(2,2), m_(2,2), _m(2,2);
+    m(0,0) = 3;
+    m(1,0) = 2.5;
+    m(0,1) = -1;
+    m(1,1) = m(1,0) + m(0,1);
+    std::cout << "m: " << std::endl;
+    std::cout << m << std::endl;
+
+    l = m.inverse();
+    std::cout << "l: " <<  std::endl;
+    std::cout << l << std::endl;
+
+    std::cout << "m*l: " << std::endl;
+    std::cout << m*l << std::endl;
+
+    m_ = m.transpose();
+    std::cout << "m_: " <<  std::endl;
+    std::cout << m_ << std::endl;
+
+    std::cout << "(m*m_)^(-1): " << std::endl;
+    m_ = m*m_;
+    _m = m_.inverse();
+    std::cout << _m << std::endl;
+
+    std::cout << "(_m*m_)^(-1): " << std::endl;
+    std::cout << _m*m_ << std::endl;
+*/
     return 0;
+
 }

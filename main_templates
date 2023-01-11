@@ -1,0 +1,245 @@
+QString name_log_dir = QCoreApplication::applicationDirPath();
+QString filename = name_log_dir + "/test.txt";
+QFile file(filename);
+QTextStream fileText{&file};
+
+QByteArray datum;
+QString datum_str;
+double outcome;
+
+database* DB = nullptr;
+QVariantList dataDB;
+#ifdef DATABASE_ON
+DB = database::getInstance();
+DB->connectToDataBase(name_log_dir);
+#endif
+double alpha {0.85};
+double beta {0.005};
+double dt {1.0};
+
+AlphaBetaFilter<double,double> ab_filter(alpha, beta, dt);
+MedianFilter<double> median_filter_1st_order(11);
+MedianFilter<double> median_filter_2nd_order(11);
+MedianFilter<double> median_filter_3d_order(11);
+LagrangeInterpolation<double> lagrange;
+SamplesToPoints<double> s_to_p;
+PID_MATRIX_3x3<double> pidMatrix;
+
+
+#ifdef DEBUG_CMD_APP
+string strDatum {};
+int i {}, success {};
+double du_median {0.0}, u_prev_median {0.0};
+double du_datum {0.0}, u_prev_datum {0.0};
+QVector<double> OutDebug;
+#endif
+
+if(!file.open(QIODevice::ReadOnly | QIODevice::ExistingOnly))
+{
+        qWarning("The file wasn't read");
+}
+else
+{
+        while(!file.atEnd())
+        {
+                datum.clear();
+                datum = file.readLine();
+                datum = datum.trimmed();
+
+    dataDB.clear();
+                datum_str = QString(datum);
+    qDebug() << "datum(" << i << ") = " << datum_str;
+                dataDB.append(datum_str);
+                outcome = ab_filter.calculate(datum.toDouble());
+                datum_str = QString::number(outcome);
+    //qDebug() << "Alpha-Beta(" << i << ") = " << datum_str;
+                dataDB.append(datum_str);
+                outcome = median_filter_1st_order.calculation(datum.toDouble());
+                datum_str = QString::number(outcome);
+    //qDebug() << "Median_1st_order(" << i << ") = " << datum_str;
+                dataDB.append(datum_str);
+                outcome = median_filter_2nd_order.calculation(outcome);
+                datum_str = QString::number(outcome);
+    //qDebug() << "Median_2nd_order(" << i << ") = " << datum_str;
+    dataDB.append(datum_str);
+                outcome = median_filter_3d_order.calculation(outcome);
+    datum_str = QString::number(outcome);
+    //qDebug() << "Median_3d_order(" << i << ") = " << datum_str;
+                dataDB.append(datum_str);
+
+    du_median = outcome - u_prev_median;
+    if(du_median >= 0)
+        u_prev_median = outcome;
+
+    datum_str = QString::number(u_prev_median);
+    //qDebug() << "Track_du_filter_of_median(" << i << ") = " << datum_str;
+                dataDB.append(datum_str);
+
+    du_datum = datum.toDouble() - u_prev_datum;
+    if(du_datum >= 0)
+        u_prev_datum = datum.toDouble();
+
+    OutDebug.push_back(u_prev_datum);
+
+    datum_str = QString::number(u_prev_datum);
+    qDebug() << "Track_du_filter_of_datum(" << i << ") = " << datum_str;
+    dataDB.append(datum_str);
+
+    if(s_to_p.sendNewDatum(u_prev_datum))
+    {
+        success++;
+    }
+    dataDB.append("0");
+
+
+#ifdef DATABASE_ON
+    if(!DB->inserIntoTable(TABLE1, dataDB))
+    {
+        //TODO
+    }
+#endif
+                i++;
+        }
+#ifdef DEBUG_GIVEN_OUTS
+int i2 {1}, debug {0};
+double temp1 {1.0};
+QVectorIterator<double> iterator(s_to_p.pXoutQvector);
+
+while(temp1 <= s_to_p.pXoutQvector.last())
+{
+    dataDB.clear();
+    if(!((temp1 - s_to_p.pXoutQvector.at(i2)) >= 0))
+    {
+        outcome = twoPointsCurveToYpoint(s_to_p.pXoutQvector, s_to_p.pYoutQvector, temp1, i2);
+    }
+    else
+    {
+        if(i2 < (success-1))
+        {
+            i2++;
+            qDebug() << "i2 = " << i2;
+        }
+        outcome = twoPointsCurveToYpoint(s_to_p.pXoutQvector, s_to_p.pYoutQvector, temp1, i2);
+    }
+    qDebug() << "Xcor = " << temp1;
+    qDebug() << "Ycor = " << outcome;
+    datum_str = QString::number(temp1);
+    dataDB.append(datum_str);
+
+    datum_str = QString::number(outcome);
+    dataDB.append(datum_str);
+
+    outcome = OutDebug.at(debug);
+    qDebug() << "Datum = " << outcome;
+    datum_str = QString::number(outcome);
+    dataDB.append(datum_str);
+
+    if(!DB->inserIntoTable(TABLE2, dataDB))
+    {
+        //TODO
+    }
+    temp1 += 1.0;
+    debug++;
+}
+#endif
+
+#ifdef DEBUG_MATRIX_INPUT
+QVector<double> eError, EError, deError;
+int iterator = 0;
+double tempEr = 0.0, result = 0.0;
+while (iterator < (s_to_p.pYoutQvector.size() - 1))
+{
+    result = 0.0;
+    tempEr = s_to_p.pYoutQvector.at(iterator + 1) - s_to_p.pYoutQvector.at(iterator); ///< [1] - [0]
+    eError.push_back(tempEr);
+    if(iterator != 0)
+    {
+        tempEr = eError.at(iterator) - eError.at(iterator - 1); ///< [1] - [0]
+        deError.push_back(tempEr);
+    }
+    else
+    {
+        tempEr = 0.0;   ///< de0 = 0.0
+        deError.push_back(tempEr);
+    }
+    for(int element = 0; element < eError.size(); element++)
+    {
+        tempEr = 0.5*eError.at(element)*(s_to_p.pXoutQvector.at(element + 1) - s_to_p.pXoutQvector.at(element));
+        result += tempEr;
+    }
+    EError.push_back(result);
+    iterator++;
+}
+
+for(iterator = 0; iterator < eError.size(); iterator++)
+{
+    qDebug() << "e_Error(" << iterator << ") = " << eError.at(iterator);
+}
+for(iterator = 0; iterator < EError.size(); iterator++)
+{
+    qDebug() << "E_Error(" << iterator << ") = " << EError.at(iterator);
+}
+for(iterator = 0; iterator < deError.size(); iterator++)
+{
+    qDebug() << "de_Error(" << iterator << ") = " << deError.at(iterator);
+}
+for(iterator = 0; iterator < s_to_p.pXoutQvector.size(); iterator++)
+{
+    qDebug() << "Xout(" << iterator << ") = " << s_to_p.pXoutQvector.at(iterator);
+}
+for(iterator = 0; iterator < s_to_p.pYoutQvector.size(); iterator++)
+{
+    qDebug() << "Yout(" << iterator << ") = " << s_to_p.pYoutQvector.at(iterator);
+}
+#endif
+
+#ifdef DEBUG_MATRIX_OUTPUT
+QVector<double> Kp, Ki, Kd;
+double Kp_mean {0.0}, Ki_mean {0.0}, Kd_mean {0.0};
+for(iterator = 0; iterator < (eError.size() - 2); iterator++)
+{
+    double e1, E1, de1, out1;
+    double e2, E2, de2, out2;
+    double e3, E3, de3, out3;
+    e1 = eError.at(iterator);
+    E1 = EError.at(iterator);
+    //de1 = deError.at(iterator);
+    de1 = 0.1;
+    out1 = s_to_p.pYoutQvector.at(iterator + 1);
+    e2 = eError.at(iterator + 1);
+    E2 = EError.at(iterator + 1);
+    //de2 = deError.at(iterator + 1);
+    de2 = 0.1;
+    out2 = s_to_p.pYoutQvector.at(iterator + 2);
+    e3 = eError.at(iterator + 2);
+    E3 = EError.at(iterator + 2);
+    //de3 = deError.at(iterator + 2);
+    de3 = 0.1;
+    out3 = s_to_p.pYoutQvector.at(iterator + 3);
+    pidMatrix.sendNewCoefs(e1, E1, de1, out1, e2, E2, de2, out2, e3, E3, de3, out3);
+    Kd.push_back(pidMatrix.calculate_Kd());
+    Ki.push_back(pidMatrix.calculate_Ki());
+    Kp.push_back(pidMatrix.calculate_Kp());
+}
+
+for(iterator = 0; iterator < Kd.size(); iterator++)
+{
+    qDebug() << "Kp(" << iterator << ") = " << Kp.at(iterator);
+    Kp_mean += Kp.at(iterator);
+    qDebug() << "Ki(" << iterator << ") = " << Ki.at(iterator);
+    Ki_mean += Ki.at(iterator);
+    qDebug() << "Kd(" << iterator << ") = " << Kd.at(iterator);
+    Kd_mean += Kd.at(iterator);
+}
+#endif
+
+qDebug() << "The amount of successful results is " << success;
+qDebug() << "Kp_mean is " << (Kp_mean/Kp.size());
+qDebug() << "Ki_mean is " << (Ki_mean/Ki.size());
+qDebug() << "Kd_mean is " << (Kd_mean/Kd.size());
+        file.close();
+#ifdef DATABASE_ON
+        DB->closeDataBase();
+#endif
+
+}

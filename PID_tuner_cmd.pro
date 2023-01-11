@@ -24,6 +24,7 @@ DISTFILES += \
 	hppc_test_from_112122_rev.3.csv \
 	hppc_test_from_112122_v2.csv \
 	main \
+	main_tevenin_model \
 	readme.md \
 	t1_for_Up.txt \
 	t2_for_Up.txt \
@@ -36,31 +37,5 @@ HEADERS += \
 	hppc_to_model.hpp \
 	medianfilter.h
 
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\AccelerateSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\Cholesky
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\CholmodSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\Core
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\Eigenvalues
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\Geometry
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\Householder
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\IterativeLinearSolvers
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\Jacobi
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\KLUSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\LU
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\MetisSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\misc
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\OrderingMethods
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\PardisoSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\PaStiXSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\plugins
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\QR
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\SparseCholesky
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\SparseCore
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\SparseLU
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\SparseQR
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\SPQRSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\StlSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\SuperLUSupport
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\SVD
-INCLUDEPATH += D:\alexicmt\DevLibs\Eigen\Eigen\src\UmfPackSupport
+INCLUDEPATH += /home/expicmt/DevLibs/eigen-3.4.0/Eigen
 
