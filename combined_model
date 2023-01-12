@@ -9,6 +9,15 @@
 #include <iostream>
 #include <QVector>
 
+/* Description
+ * The model is combination of:
+ * Shepherd model:              yk = E0 − R*ik − Ki/zk
+ * Unnewehr universal model:    yk = E0 − R*ik − Ki*zk
+ * Nernst model:                yk = E0 − R*ik + K2*ln(zk)+K3*ln(1−zk)
+ * where
+ * ik - measured current [A]
+ * zk - measured SOC
+*/
 
 /*
     Battery Model Parameters
