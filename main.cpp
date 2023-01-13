@@ -112,6 +112,7 @@ int main(int argc, char *argv[]){
     MatrixXd Y(Ytemp.size(), 1);
     MatrixXd H(Ytemp.size(), 7), HTH(7,7), Htransposed(7,Ytemp.size()), HTHinversed(7,7);
     MatrixXd Theta(7, 1);
+    MatrixXd m_err (Ytemp.size(), 1);
 
     i = 0;
     while(i < Ytemp.size()){
@@ -158,6 +159,7 @@ int main(int argc, char *argv[]){
         Yest += Theta(4,0) * H(i,4);         //5
         Yest += Theta(5,0) * H(i,5);         //6
         Yest += Theta(6,0) * H(i,6);         //7
+        m_err(i, 0) = Y(i,0) - Yest;
         dataDB.clear();
         dataDB.append(QString::number(Y(i,0)));
         dataDB.append(QString::number(Yest));
@@ -168,6 +170,9 @@ int main(int argc, char *argv[]){
         }
         i++;
     }
+    m_err = m_err.transpose()*m_err;
+    m_err /= Ytemp.size();
+    std::cout << "Mean squared error = " << m_err;
 
 /* Result
     Theta:
