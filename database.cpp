@@ -43,14 +43,16 @@ bool database::inserIntoTable(QString table, const QVariantList &data)
 	QSqlQuery query("BaseQuery", db);
 	if(table == TABLE1)
 	{
-		query.prepare("INSERT INTO " TABLE1 " ( "   TABLE1_U_REAL				", "		//0
-													TABLE1_U_EST				", "		//1
-													TABLE1_I_REAL				" ) "
-					  "VALUES (:F1, :F2, :F3)");
+        query.prepare("INSERT INTO " TABLE1 " ( "   TABLE1_I_REAL				", "		//  0
+                                                    TABLE1_U_REAL				", "		//  1
+                                                    TABLE1_U_lineal_SUN_model  	", "		//  2
+                                                    TABLE1_U_result     		" ) "       //  3
+                      "VALUES (:F1, :F2, :F3, :F4)");
 
 		query.bindValue(":F1",       data[0]);
 		query.bindValue(":F2",       data[1]);
 		query.bindValue(":F3",       data[2]);
+        query.bindValue(":F4",       data[3]);
 	}
 	else
 	{
@@ -95,9 +97,10 @@ bool database::createTable()
 	QSqlQuery query("BaseQuery", db);
 	if(!query.exec( "CREATE TABLE " TABLE1 " ("
 					"N INTEGER PRIMARY KEY AUTOINCREMENT, "
-					TABLE1_U_REAL					" NUMERIC    NOT NULL,"
-					TABLE1_U_EST					" NUMERIC    NOT NULL,"
-					TABLE1_I_REAL					" NUMERIC    NOT NULL"
+                    TABLE1_I_REAL                       " NUMERIC    NOT NULL,"
+                    TABLE1_U_REAL                       " NUMERIC    NOT NULL,"
+                    TABLE1_U_lineal_SUN_model			" NUMERIC    NOT NULL,"
+                    TABLE1_U_result                     " NUMERIC    NOT NULL"
                     " )"
 					))
 	{

@@ -13,14 +13,16 @@
 #include <QDebug>
 
 #define DATABASE_HOSTNAME   "NameDataBase"
-#define DATABASE_NAME       "db_pid_tuner_sql"
+#define DATABASE_NAME       "db_ekf_research_sql"
 #define FOLDER_DATABASE     "DataUser"
 
-#define TABLE1							"PID_Tuner"
-#define TABLE1_N						"N"
-#define TABLE1_U_REAL					"U_Real"
-#define TABLE1_U_EST					"U_Est"
-#define TABLE1_I_REAL					"I_Real"
+#define TABLE1                              "PID_Tuner"
+#define TABLE1_N                            "N"
+#define TABLE1_I_REAL                       "I_Real"
+#define TABLE1_U_REAL                       "U_Real"
+#define TABLE1_U_lineal_SUN_model			"U_lineal_SUN_model"
+#define TABLE1_U_result                     "U_result"
+
 
 
 

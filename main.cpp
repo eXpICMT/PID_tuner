@@ -78,7 +78,7 @@ int main(int argc, char *argv[]){
     QFile csv1(csvname1);
     QString filename1 = name_log_dir + "/coefs.txt";
     QFile file1(filename1);
-    double SOC {1.0};
+    double SOC {0.999};
     QVector<double> Ytemp;
     QVector<double> Itemp;
 
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]){
     DB = database::getInstance();
     DB->connectToDataBase(name_log_dir);
     int i = 0;
-    float Yest {0.0};
+    float Y_linear_SUN_model {0.0};
 
     if(!csv1.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)){
         qWarning("The csv 1 wasn't read");
@@ -110,81 +110,83 @@ int main(int argc, char *argv[]){
     }
 
     MatrixXd Y(Ytemp.size(), 1);
-    MatrixXd H(Ytemp.size(), 7), HTH(7,7), Htransposed(7,Ytemp.size()), HTHinversed(7,7);
-    MatrixXd Theta(7, 1);
-    MatrixXd m_err (Ytemp.size(), 1);
+    MatrixXd H_linear(Ytemp.size(), 3), HTH_linear(3,3), Htransposed_linear(3,Ytemp.size()), HTHinversed_linear(3,3);
+    MatrixXd Theta_linear(3, 1);
+    MatrixXd m_err_linear (Ytemp.size(), 1);
 
     i = 0;
     while(i < Ytemp.size()){
         Y(i,0) = Ytemp.at(i);
-        H(i, 0) = 1;//for K0
-        if(Itemp.at(i) > 0.0){
-            H(i, 1) = Itemp.at(i);//for I+
-            H(i, 2) = 0.0;//for I-
-        }else{
-            H(i, 1) = 0.0;
-            H(i, 2) = Itemp.at(i);
-        }
-        SOC += Itemp.at(i)/(15.0*3600.0);
-        if(SOC > 1.0)
-            SOC = 1.0;
-        H(i, 3) = 1.0/SOC;
-        H(i, 4) = SOC;
-        H(i, 5) = log(SOC);
-        if((1-SOC) > 0.0)
-            H(i, 6) = log(1-SOC);
-        else
-            H(i, 6) = 1.0;
+        H_linear(i,0) = 1;
+        H_linear(i,1) = Itemp.at(i);
+        SOC += Itemp.at(i)/(14.985*3600.0);
+        H_linear(i,2) = SOC;
         i++;
     }
 
     //Theta = (H^T * H)^-1 * H^T * Y
 
-    Htransposed = H.transpose();
-    HTH = Htransposed*H;
-    HTHinversed = HTH.inverse();
-    Theta = HTHinversed*Htransposed;
-    Theta *= Y;
+    Htransposed_linear = H_linear.transpose();
+    HTH_linear = Htransposed_linear*H_linear;
+    HTHinversed_linear = HTH_linear.inverse();
+    Theta_linear = HTHinversed_linear*Htransposed_linear;
+    Theta_linear *= Y;
 
-    std::cout << "Theta:" << std::endl;
-    std::cout << Theta << std::endl;
+    std::cout << "Theta_linear:" << std::endl;
+    std::cout << Theta_linear << std::endl;
 
     i = 0;
 
     while(i < Ytemp.size()){
-        Yest = Theta(0,0) * H(i,0);          //1
-        Yest += Theta(1,0) * H(i,1);         //2
-        Yest += Theta(2,0) * H(i,2);         //3
-        Yest += Theta(3,0) * H(i,3);         //4
-        Yest += Theta(4,0) * H(i,4);         //5
-        Yest += Theta(5,0) * H(i,5);         //6
-        Yest += Theta(6,0) * H(i,6);         //7
-        m_err(i, 0) = Y(i,0) - Yest;
+        Y_linear_SUN_model = Theta_linear(0,0) * H_linear(i,0);          //1 linear
+        Y_linear_SUN_model += Theta_linear(1,0) * H_linear(i,1);         //2 linear
+        Y_linear_SUN_model += Theta_linear(2,0) * H_linear(i,2);         //3 linear
+        m_err_linear(i, 0) = Y(i,0) - Y_linear_SUN_model;
+
         dataDB.clear();
-        dataDB.append(QString::number(Y(i,0)));
-        dataDB.append(QString::number(Yest));
         dataDB.append(QString::number(Itemp.at(i)));
+        dataDB.append(QString::number(Y(i,0)));
+        dataDB.append(QString::number(Y_linear_SUN_model));
+        dataDB.append(QString::number(0.0));
+
         if(!DB->inserIntoTable(TABLE1, dataDB))
         {
             //TODO
         }
         i++;
     }
-    m_err = m_err.transpose()*m_err;
-    m_err /= Ytemp.size();
-    std::cout << "Mean squared error = " << m_err;
+    m_err_linear = m_err_linear.transpose()*m_err_linear;
+    m_err_linear /= Ytemp.size();
+    std::cout << "Mean squared error = " << m_err_linear;
 
 /* Result
     Theta:
-       51.1968
-      0.361198
-      0.341589
-       15.1891
-      -15.4414
-       37.8947
-    -0.0317025
+ 42.7595    //K0
+0.361157    //R+
+ 0.34333    //R-
+ 8.35822    //K1
+
+42.759
+0.344552
+8.36165
 */
 
+/* Kalman filter part
+x_k - the actual SOC
+z_k - the actual terminal voltage
+x_tilda_k - the approxiate SOC
+z_tilda_k - the approxiate terminal voltage
+x_hat_k - an a_posteriori estimate of SOC
+w_k - the process noise
+v_k - the measurement noise
+A - the Jacobian matrix of partial derivatives of f with respect to x
+
+1
+x_hat_tilda_k   = f(x_hat_tilda_k_1, u_k_1, 0);
+SOC_hat_tilda_k = SOC_hat_k_1 + (I_k_1*delta_t/Cn);
+
+
+*/
     csv1.close();
     DB->closeDataBase();
 
