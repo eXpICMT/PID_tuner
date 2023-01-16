@@ -43,16 +43,22 @@ bool database::inserIntoTable(QString table, const QVariantList &data)
 	QSqlQuery query("BaseQuery", db);
 	if(table == TABLE1)
 	{
-        query.prepare("INSERT INTO " TABLE1 " ( "   TABLE1_I_REAL				", "		//  0
-                                                    TABLE1_U_REAL				", "		//  1
-                                                    TABLE1_U_lineal_SUN_model  	", "		//  2
-                                                    TABLE1_U_result     		" ) "       //  3
-                      "VALUES (:F1, :F2, :F3, :F4)");
+        query.prepare("INSERT INTO " TABLE1 " ( "   TABLE1_I_REAL                   ", "		//  0
+                                                    TABLE1_U_REAL                   ", "		//  1
+                                                    TABLE1_U_lineal_SUN_model       ", "		//  2
+                                                    TABLE1_U_result_R_0_005     	", "        //  3
+                                                    TABLE1_U_result_R_0_05     		", "        //  4
+                                                    TABLE1_U_result_R_0_5     		", "        //  5
+                                                    TABLE1_U_result_R_5     		" ) "       //  6
+                      "VALUES (:F1, :F2, :F3, :F4, :F5, :F6, :F7)");
 
 		query.bindValue(":F1",       data[0]);
 		query.bindValue(":F2",       data[1]);
 		query.bindValue(":F3",       data[2]);
         query.bindValue(":F4",       data[3]);
+        query.bindValue(":F5",       data[4]);
+        query.bindValue(":F6",       data[5]);
+        query.bindValue(":F7",       data[6]);
 	}
 	else
 	{
@@ -100,7 +106,10 @@ bool database::createTable()
                     TABLE1_I_REAL                       " NUMERIC    NOT NULL,"
                     TABLE1_U_REAL                       " NUMERIC    NOT NULL,"
                     TABLE1_U_lineal_SUN_model			" NUMERIC    NOT NULL,"
-                    TABLE1_U_result                     " NUMERIC    NOT NULL"
+                    TABLE1_U_result_R_0_005             " NUMERIC    NOT NULL,"
+                    TABLE1_U_result_R_0_05              " NUMERIC    NOT NULL,"
+                    TABLE1_U_result_R_0_5               " NUMERIC    NOT NULL,"
+                    TABLE1_U_result_R_5                 " NUMERIC    NOT NULL"
                     " )"
 					))
 	{
