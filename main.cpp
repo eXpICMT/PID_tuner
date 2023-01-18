@@ -163,13 +163,13 @@ int main(int argc, char *argv[]){
     P_k_1_R_5                   << 7.524871, -0.455672, -0.455672, 2.162473;
 
     MatrixXd F_k                (n,n);
-    F_k                         << 1.0, (1.0/3600), 0.0, 1.0;
+    F_k                         << 1.0, (1.0/(14.985*3600.0)), 0.0, 1.0;
 
     MatrixXd H_k                (m,n);
     H_k                         << K_1, R;
 
     MatrixXd Q_k                (n,n);
-    Q_k                         << 0.001, 0.001, 0.001, 0.001;
+    Q_k                         << 0.1, 0.1, 0.1, 0.1;
 
     MatrixXd R_k_0_005          (m,m);
     MatrixXd R_k_0_05           (m,m);
@@ -207,17 +207,20 @@ int main(int argc, char *argv[]){
     double Y_result_R_5         {0.0};
 
     while(i < Ytemp.size()){
+
         Y_linear_SUN_model      = K_0 * H_linear(i,0);           //1 linear
         Y_linear_SUN_model      += R * H_linear(i,1);            //2 linear
         Y_linear_SUN_model      += K_1 * H_linear(i,2);          //3 linear
+
+        /*Kalman filter part*/
         m_err_linear(i, 0)      = Y(i,0) - Y_linear_SUN_model;
         z_k(0,0)                = Y(i,0) - K_0;
 
-        /*Kalman filter part*/
         x_hat_k_1_R_0_005(1,0)  = H_linear(i,1);            //I_k_1
         x_hat_k_1_R_0_05(1,0)   = H_linear(i,1);            //I_k_1
         x_hat_k_1_R_0_5(1,0)    = H_linear(i,1);            //I_k_1
         x_hat_k_1_R_5(1,0)      = H_linear(i,1);            //I_k_1
+
         //time update step
         x_hat_k_R_0_005         = F_k*x_hat_k_1_R_0_005;
         x_hat_k_R_0_05          = F_k*x_hat_k_1_R_0_05;
@@ -228,6 +231,7 @@ int main(int argc, char *argv[]){
         P_k_R_0_05              = F_k*P_k_1_R_0_05*F_k.transpose() + Q_k;
         P_k_R_0_5               = F_k*P_k_1_R_0_5*F_k.transpose() + Q_k;
         P_k_R_5                 = F_k*P_k_1_R_5*F_k.transpose() + Q_k;
+
         //measurement update
         K_k_R_0_005             = P_k_R_0_005*H_k.transpose()*((H_k*P_k_R_0_005*H_k.transpose() + R_k_0_005).inverse());
         K_k_R_0_05              = P_k_R_0_05*H_k.transpose()*((H_k*P_k_R_0_05*H_k.transpose() + R_k_0_05).inverse());
@@ -254,7 +258,9 @@ int main(int argc, char *argv[]){
         P_k_1_R_0_05            = P_k_R_0_05;
         P_k_1_R_0_5             = P_k_R_0_5;
         P_k_1_R_5               = P_k_R_5;
+        /*Kalman filter part*/
 
+        //Solution part
         Y_result_R_0_005        = K_0 + R*H_linear(i,1) + K_1*x_hat_k_R_0_005(0,0);
         Y_result_R_0_05         = K_0 + R*H_linear(i,1) + K_1*x_hat_k_R_0_05(0,0);
         Y_result_R_0_5          = K_0 + R*H_linear(i,1) + K_1*x_hat_k_R_0_5(0,0);
@@ -265,7 +271,7 @@ int main(int argc, char *argv[]){
         m_err_kf_R_0_5(i,0)     = Y(i,0) - Y_result_R_0_5;
         m_err_kf_R_5(i,0)       = Y(i,0) - Y_result_R_5;
 
-        /*Kalman filter part*/
+
 
         dataDB.clear();
         dataDB.append(QString::number(Itemp.at(i)));
