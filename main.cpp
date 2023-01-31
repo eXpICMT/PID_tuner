@@ -109,19 +109,34 @@ int main(int argc, char *argv[]){
         }
     }
 
-    //Find SOC function from OCV START
-    MatrixXd OCV_m              (4, 1);
-    MatrixXd Theta_m            (4, 1);
-    MatrixXd SOC_m              (4, 4);
-    OCV_m                       << 48.49, 49.46, 50.31, 51.2;
-    SOC_m                       << pow(0.7, 3.0), pow(0.7, 2.0), 0.7, 1.0,
-                                   pow(0.8, 3.0), pow(0.8, 2.0), 0.8, 1.0,
-                                   pow(0.9, 3.0), pow(0.9, 2.0), 0.9, 1.0,
-                                   1.0, 1.0, 1.0, 1.0;
+    //Find OCV function from SOC START
+    MatrixXd ocv_OCV_m              (4, 1);
+    MatrixXd ocv_Theta_m            (4, 1);
+    MatrixXd ocv_SOC_m              (4, 4);
+    ocv_OCV_m                       << 48.49, 49.46, 50.31, 51.2;
+    ocv_SOC_m                       <<  pow(0.7, 3.0), pow(0.7, 2.0), 0.7, 1.0,
+                                        pow(0.8, 3.0), pow(0.8, 2.0), 0.8, 1.0,
+                                        pow(0.9, 3.0), pow(0.9, 2.0), 0.9, 1.0,
+                                        1.0, 1.0, 1.0, 1.0;
 
-    Theta_m = (SOC_m.transpose()*SOC_m).inverse()*SOC_m.transpose()*OCV_m;
+    ocv_Theta_m = (ocv_SOC_m.transpose()*ocv_SOC_m).inverse()*ocv_SOC_m.transpose()*ocv_OCV_m;
     std::cout << "Find coefs for OCV(SOC):" << std::endl;
-    std::cout << Theta_m << std::endl;
+    std::cout << ocv_Theta_m << std::endl;
+    //Find OCV function from SOC END
+
+    //Find SOC function from OCV START
+    MatrixXd soc_SOC_m              (4, 1);
+    MatrixXd soc_Theta_m            (4, 1);
+    MatrixXd soc_OCV_m              (4, 4);
+    soc_SOC_m                       << 0.7, 0.8, 0.9, 1.0;
+    soc_OCV_m                       <<  pow(48.49, 3.0), pow(48.49, 2.0), 48.49, 1.0,
+                                        pow(49.46, 3.0), pow(49.46, 2.0), 49.46, 1.0,
+                                        pow(50.31, 3.0), pow(50.31, 2.0), 50.31, 1.0,
+                                        pow(51.2, 3.0), pow(51.2, 2.0), 51.2, 1.0;
+
+    soc_Theta_m = (soc_OCV_m.transpose()*soc_OCV_m).inverse()*soc_OCV_m.transpose()*soc_SOC_m;
+    std::cout << "Find coefs for SOC(OCV):" << std::endl;
+    std::cout << soc_Theta_m << std::endl;
     //Find SOC function from OCV END
 
     //Find Unnewehr universal model
@@ -184,6 +199,7 @@ int main(int argc, char *argv[]){
 
     double Y_result             {0.0};
     double OCV_result           {0.0};
+    double SOC_result           {0.0};
 
     while(i < Ytemp.size()){
 
@@ -216,10 +232,14 @@ int main(int argc, char *argv[]){
 
         //Solution part
         Y_result                = K_0 + R*H_linear(i,1) + K_1*x_hat_k(0,0);
-        OCV_result              = Theta_m(0,0)*pow(H_linear(i,2),3.0);
-        OCV_result              += Theta_m(1,0)*pow(H_linear(i,2),2.0);
-        OCV_result              += Theta_m(2,0)*H_linear(i,2);
-        OCV_result              += Theta_m(3,0)*1.0;
+        OCV_result              = ocv_Theta_m(0,0)*pow(H_linear(i,2),3.0);
+        OCV_result              += ocv_Theta_m(1,0)*pow(H_linear(i,2),2.0);
+        OCV_result              += ocv_Theta_m(2,0)*H_linear(i,2);
+        OCV_result              += ocv_Theta_m(3,0)*1.0;
+        SOC_result              = soc_Theta_m(0,0)*pow(Y(i,0),3.0);
+        SOC_result              += soc_Theta_m(1,0)*pow(Y(i,0),2.0);
+        SOC_result              += soc_Theta_m(2,0)*Y(i,0);
+        SOC_result              += soc_Theta_m(3,0)*1.0;
 
         m_err_kf(i,0)           = Y(i,0) - Y_result;
 
@@ -229,7 +249,7 @@ int main(int argc, char *argv[]){
         dataDB.append(QString::number(Y_linear_SUN_model));
         dataDB.append(QString::number(Y_result));
         dataDB.append(QString::number(OCV_result));
-        dataDB.append(QString::number(0.0));
+        dataDB.append(QString::number(SOC_result));
         dataDB.append(QString::number(0.0));
 
         if(!DB->inserIntoTable(TABLE1, dataDB))
