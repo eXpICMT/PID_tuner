@@ -21,10 +21,10 @@
 #define TABLE1_I_REAL                       "I_Real"
 #define TABLE1_U_REAL                       "U_Real"
 #define TABLE1_U_lineal_SUN_model			"U_lineal_SUN_model"
-#define TABLE1_U_result_R_0_005              "U_result_R_0_005"
-#define TABLE1_U_result_R_0_05              "U_result_R_0_05"
-#define TABLE1_U_result_R_0_5               "U_result_R_0_5"
-#define TABLE1_U_result_R_5                 "U_result_R_5"
+#define TABLE1_U_result_R_0_005             "U_result_kf"
+#define TABLE1_U_result_R_0_05              "SOC_from_OCV"
+#define TABLE1_U_result_R_0_5               "NA_2"
+#define TABLE1_U_result_R_5                 "NA_3"
 
 
 

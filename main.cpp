@@ -109,17 +109,26 @@ int main(int argc, char *argv[]){
         }
     }
 
+    //Find SOC function from OCV
+    MatrixXd SOC_m              (4, 1);
+    MatrixXd Theta_m            (4, 1);
+    MatrixXd OCV_m              (4, 4);
+    SOC_m                       << 0.7, 0.8, 0.9, 1.0;
+    OCV_m                       << pow(48.49, 3.0), pow(48.49, 2.0), 48.49, 1.0,
+                                   pow(49.46, 3.0), pow(49.46, 2.0), 49.46, 1.0,
+                                   pow(50.31, 3.0), pow(50.31, 2.0), 50.31, 1.0,
+                                   pow(51.2, 3.0), pow(51.2, 2.0), 51.2, 1.0;
+
+    Theta_m = (OCV_m.transpose()*OCV_m).inverse()*OCV_m.transpose()*SOC_m;
+    std::cout << "Find coefs for OCV(SOC):" << std::endl;
+    std::cout << Theta_m << std::endl;
+
+    //Find Unnewehr universal model
     MatrixXd Y                  (Ytemp.size(), 1);
     MatrixXd H_linear           (Ytemp.size(), 3);
-    MatrixXd HTH_linear         (3,3);
-    MatrixXd Htransposed_linear (3,Ytemp.size());
-    MatrixXd HTHinversed_linear (3,3);
     MatrixXd Theta_linear       (3, 1);
     MatrixXd m_err_linear       (Ytemp.size(), 1);
-    MatrixXd m_err_kf_R_0_005   (Ytemp.size(), 1);
-    MatrixXd m_err_kf_R_0_05    (Ytemp.size(), 1);
-    MatrixXd m_err_kf_R_0_5     (Ytemp.size(), 1);
-    MatrixXd m_err_kf_R_5       (Ytemp.size(), 1);
+    MatrixXd m_err_kf           (Ytemp.size(), 1);
 
     i = 0;
     while(i < Ytemp.size()){
@@ -132,14 +141,9 @@ int main(int argc, char *argv[]){
     }
 
     //Theta = (H^T * H)^-1 * H^T * Y
+    Theta_linear = (H_linear.transpose()*H_linear).inverse()*H_linear.transpose()*Y;
 
-    Htransposed_linear = H_linear.transpose();
-    HTH_linear = Htransposed_linear*H_linear;
-    HTHinversed_linear = HTH_linear.inverse();
-    Theta_linear = HTHinversed_linear*Htransposed_linear;
-    Theta_linear *= Y;
-
-    std::cout << "Theta_linear:" << std::endl;
+    std::cout << "Find coefs for Unnewehr universal model:" << std::endl;
     std::cout << Theta_linear << std::endl;
 
     double K_0 = Theta_linear   (0,0);
@@ -147,20 +151,11 @@ int main(int argc, char *argv[]){
     double K_1 = Theta_linear   (2,0);
     int n                       {2}; //amount of states (SOC_k, I_k)
     int m                       {1}; //amount of measurements (Uout)
-    MatrixXd P_k_1_R_0_005      (n,n);
-    MatrixXd P_k_1_R_0_05       (n,n);
-    MatrixXd P_k_1_R_0_5        (n,n);
-    MatrixXd P_k_1_R_5          (n,n);
-    MatrixXd P_k_R_0_005        (n,n);
-    MatrixXd P_k_R_0_05         (n,n);
-    MatrixXd P_k_R_0_5          (n,n);
-    MatrixXd P_k_R_5            (n,n);
+    MatrixXd P_k_1              (n,n);
+    MatrixXd P_k                (n,n);
 
                                    //11      //12       //21       //22
-    P_k_1_R_0_005               << 7.524871, -0.455672, -0.455672, 2.162473;
-    P_k_1_R_0_05                << 7.524871, -0.455672, -0.455672, 2.162473;
-    P_k_1_R_0_5                 << 7.524871, -0.455672, -0.455672, 2.162473;
-    P_k_1_R_5                   << 7.524871, -0.455672, -0.455672, 2.162473;
+    P_k_1                       << 7.524871, -0.455672, -0.455672, 2.162473;
 
     MatrixXd F_k                (n,n);
     F_k                         << 1.0, (1.0/(14.985*3600.0)), 0.0, 1.0;
@@ -169,42 +164,25 @@ int main(int argc, char *argv[]){
     H_k                         << K_1, R;
 
     MatrixXd Q_k                (n,n);
-    Q_k                         << 0.1, 0.1, 0.1, 0.1;
+    Q_k                         << 0.1, 0.1, 0.1, 1.0;
 
-    MatrixXd R_k_0_005          (m,m);
-    MatrixXd R_k_0_05           (m,m);
-    MatrixXd R_k_0_5            (m,m);
-    MatrixXd R_k_5              (m,m);
+    MatrixXd R_k                (m,m);
 
-    R_k_0_005                   << 0.005;
-    R_k_0_05                    << 0.05;
-    R_k_0_5                     << 0.5;
-    R_k_5                       << 5.0;
+    R_k                         << 10.0;
 
-    MatrixXd x_hat_k_R_0_005    (n,1), x_hat_k_1_R_0_005    (n,1);
-    MatrixXd x_hat_k_R_0_05     (n,1), x_hat_k_1_R_0_05     (n,1);
-    MatrixXd x_hat_k_R_0_5      (n,1), x_hat_k_1_R_0_5      (n,1);
-    MatrixXd x_hat_k_R_5        (n,1), x_hat_k_1_R_5        (n,1);
+    MatrixXd x_hat_k            (n,1), x_hat_k_1        (n,1);
 
     MatrixXd z_k                (m,1);
 
-    MatrixXd K_k_R_0_005        (n,m);
-    MatrixXd K_k_R_0_05         (n,m);
-    MatrixXd K_k_R_0_5          (n,m);
-    MatrixXd K_k_R_5            (n,m);
+    MatrixXd K_k                (n,m);
 
     i = 0;
     SOC = 0.999;
 
-    x_hat_k_1_R_0_005           << SOC, 0.0;
-    x_hat_k_1_R_0_05            << SOC, 0.0;
-    x_hat_k_1_R_0_5             << SOC, 0.0;
-    x_hat_k_1_R_5               << SOC, 0.0;
+    x_hat_k_1                   << SOC, 0.0;
 
-    double Y_result_R_0_005     {0.0};
-    double Y_result_R_0_05      {0.0};
-    double Y_result_R_0_5       {0.0};
-    double Y_result_R_5         {0.0};
+    double Y_result             {0.0};
+    double SOC_result           {0.0};
 
     while(i < Ytemp.size()){
 
@@ -216,71 +194,42 @@ int main(int argc, char *argv[]){
         m_err_linear(i, 0)      = Y(i,0) - Y_linear_SUN_model;
         z_k(0,0)                = Y(i,0) - K_0;
 
-        x_hat_k_1_R_0_005(1,0)  = H_linear(i,1);            //I_k_1
-        x_hat_k_1_R_0_05(1,0)   = H_linear(i,1);            //I_k_1
-        x_hat_k_1_R_0_5(1,0)    = H_linear(i,1);            //I_k_1
-        x_hat_k_1_R_5(1,0)      = H_linear(i,1);            //I_k_1
+        x_hat_k_1(1,0)          = H_linear(i,1);            //I_k_1
 
         //time update step
-        x_hat_k_R_0_005         = F_k*x_hat_k_1_R_0_005;
-        x_hat_k_R_0_05          = F_k*x_hat_k_1_R_0_05;
-        x_hat_k_R_0_5           = F_k*x_hat_k_1_R_0_5;
-        x_hat_k_R_5             = F_k*x_hat_k_1_R_5;
+        x_hat_k                 = F_k*x_hat_k_1;
 
-        P_k_R_0_005             = F_k*P_k_1_R_0_005*F_k.transpose() + Q_k;
-        P_k_R_0_05              = F_k*P_k_1_R_0_05*F_k.transpose() + Q_k;
-        P_k_R_0_5               = F_k*P_k_1_R_0_5*F_k.transpose() + Q_k;
-        P_k_R_5                 = F_k*P_k_1_R_5*F_k.transpose() + Q_k;
+        P_k                     = F_k*P_k_1*F_k.transpose() + Q_k;
 
         //measurement update
-        K_k_R_0_005             = P_k_R_0_005*H_k.transpose()*((H_k*P_k_R_0_005*H_k.transpose() + R_k_0_005).inverse());
-        K_k_R_0_05              = P_k_R_0_05*H_k.transpose()*((H_k*P_k_R_0_05*H_k.transpose() + R_k_0_05).inverse());
-        K_k_R_0_5               = P_k_R_0_5*H_k.transpose()*((H_k*P_k_R_0_5*H_k.transpose() + R_k_0_5).inverse());
-        K_k_R_5                 = P_k_R_5*H_k.transpose()*((H_k*P_k_R_5*H_k.transpose() + R_k_5).inverse());
+        K_k                     = P_k*H_k.transpose()*((H_k*P_k*H_k.transpose() + R_k).inverse());
 
-        x_hat_k_R_0_005         = x_hat_k_R_0_005 + K_k_R_0_005*(z_k - H_k*x_hat_k_R_0_005);
-        x_hat_k_R_0_05          = x_hat_k_R_0_05 + K_k_R_0_05*(z_k - H_k*x_hat_k_R_0_05);
-        x_hat_k_R_0_5           = x_hat_k_R_0_5 + K_k_R_0_5*(z_k - H_k*x_hat_k_R_0_5);
-        x_hat_k_R_5             = x_hat_k_R_5 + K_k_R_5*(z_k - H_k*x_hat_k_R_5);
+        x_hat_k                 = x_hat_k + K_k*(z_k - H_k*x_hat_k);
 
-        P_k_R_0_005             = P_k_R_0_005 - K_k_R_0_005*H_k*P_k_R_0_005;
-        P_k_R_0_05              = P_k_R_0_05 - K_k_R_0_05*H_k*P_k_R_0_05;
-        P_k_R_0_5               = P_k_R_0_5 - K_k_R_0_5*H_k*P_k_R_0_5;
-        P_k_R_5                 = P_k_R_5 - K_k_R_5*H_k*P_k_R_5;
+        P_k                     = P_k - K_k*H_k*P_k;
 
         //initialization to the next cycle
-        x_hat_k_1_R_0_005(0,0)  = x_hat_k_R_0_005(0,0);             //SOC_k_1
-        x_hat_k_1_R_0_05(0,0)   = x_hat_k_R_0_05(0,0);              //SOC_k_1
-        x_hat_k_1_R_0_5(0,0)    = x_hat_k_R_0_5(0,0);               //SOC_k_1
-        x_hat_k_1_R_5(0,0)      = x_hat_k_R_5(0,0);                 //SOC_k_1
-
-        P_k_1_R_0_005           = P_k_R_0_005;
-        P_k_1_R_0_05            = P_k_R_0_05;
-        P_k_1_R_0_5             = P_k_R_0_5;
-        P_k_1_R_5               = P_k_R_5;
+        x_hat_k_1(0,0)          = x_hat_k(0,0);                 //SOC_k_1
+        P_k_1                   = P_k;
         /*Kalman filter part*/
 
         //Solution part
-        Y_result_R_0_005        = K_0 + R*H_linear(i,1) + K_1*x_hat_k_R_0_005(0,0);
-        Y_result_R_0_05         = K_0 + R*H_linear(i,1) + K_1*x_hat_k_R_0_05(0,0);
-        Y_result_R_0_5          = K_0 + R*H_linear(i,1) + K_1*x_hat_k_R_0_5(0,0);
-        Y_result_R_5            = K_0 + R*H_linear(i,1) + K_1*x_hat_k_R_5(0,0);
+        Y_result                = K_0 + R*H_linear(i,1) + K_1*x_hat_k(0,0);
+        SOC_result              = Theta_m(0,0)*pow(Y(i,0),3.0);
+        SOC_result              += Theta_m(1,0)*pow(Y(i,0),2.0);
+        SOC_result              += Theta_m(2,0)*Y(i,0);
+        SOC_result              += Theta_m(3,0)*1.0;
 
-        m_err_kf_R_0_005(i,0)   = Y(i,0) - Y_result_R_0_005;
-        m_err_kf_R_0_05(i,0)    = Y(i,0) - Y_result_R_0_05;
-        m_err_kf_R_0_5(i,0)     = Y(i,0) - Y_result_R_0_5;
-        m_err_kf_R_5(i,0)       = Y(i,0) - Y_result_R_5;
-
-
+        m_err_kf(i,0)           = Y(i,0) - Y_result;
 
         dataDB.clear();
         dataDB.append(QString::number(Itemp.at(i)));
         dataDB.append(QString::number(Y(i,0)));
         dataDB.append(QString::number(Y_linear_SUN_model));
-        dataDB.append(QString::number(Y_result_R_0_005));
-        dataDB.append(QString::number(Y_result_R_0_05));
-        dataDB.append(QString::number(Y_result_R_0_5));
-        dataDB.append(QString::number(Y_result_R_5));
+        dataDB.append(QString::number(Y_result));
+        dataDB.append(QString::number(SOC_result));
+        dataDB.append(QString::number(0.0));
+        dataDB.append(QString::number(0.0));
 
         if(!DB->inserIntoTable(TABLE1, dataDB))
         {
@@ -291,25 +240,10 @@ int main(int argc, char *argv[]){
     m_err_linear = m_err_linear.transpose()*m_err_linear;
     m_err_linear /= Ytemp.size();
 
-    m_err_kf_R_0_005 = m_err_kf_R_0_005.transpose()*m_err_kf_R_0_005;
-    m_err_kf_R_0_005 /= Ytemp.size();
+    m_err_kf = m_err_kf.transpose()*m_err_kf;
+    m_err_kf /= Ytemp.size();
     std::cout << "Mean squared error (model) = " << m_err_linear << std::endl;
-    std::cout << "Mean squared error (kf_R_0_005) = " << m_err_kf_R_0_005 << std::endl;
-
-    m_err_kf_R_0_05 = m_err_kf_R_0_05.transpose()*m_err_kf_R_0_05;
-    m_err_kf_R_0_05 /= Ytemp.size();
-    std::cout << "Mean squared error (model) = " << m_err_linear << std::endl;
-    std::cout << "Mean squared error (kf_R_0_05) = " << m_err_kf_R_0_05 << std::endl;
-
-    m_err_kf_R_0_5 = m_err_kf_R_0_5.transpose()*m_err_kf_R_0_5;
-    m_err_kf_R_0_5 /= Ytemp.size();
-    std::cout << "Mean squared error (model) = " << m_err_linear << std::endl;
-    std::cout << "Mean squared error (kf_R_0_5) = " << m_err_kf_R_0_5 << std::endl;
-
-    m_err_kf_R_5 = m_err_kf_R_5.transpose()*m_err_kf_R_5;
-    m_err_kf_R_5 /= Ytemp.size();
-    std::cout << "Mean squared error (model) = " << m_err_linear << std::endl;
-    std::cout << "Mean squared error (kf_R_5) = " << m_err_kf_R_5 << std::endl;
+    std::cout << "Mean squared error (KF) = " << m_err_kf << std::endl;
 
 /* Result
     Theta:
