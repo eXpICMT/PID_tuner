@@ -78,9 +78,12 @@ int main(int argc, char *argv[]){
     QFile csv1(csvname1);
     QString filename1 = name_log_dir + "/coefs.txt";
     QFile file1(filename1);
+    QString csvname2 = name_log_dir + "/preparedTableUp.csv";
+    QFile csv2(csvname2);
     double SOC {0.999};
     QVector<double> Ytemp;
     QVector<double> Itemp;
+    QVector<double> Yp, Ip;
 
     auto constrain = [](float value, float max, float min){
         if(value > max)value = max;
@@ -91,23 +94,46 @@ int main(int argc, char *argv[]){
     DB->connectToDataBase(name_log_dir);
     int i = 0;
     float Y_linear_SUN_model {0.0};
+    float Y_non_linear {0.0};
+    float Up = 0.0;
+    float prevUp = 0.0;
+    float prevIp = 0.0;
 
     if(!csv1.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)){
         qWarning("The csv 1 wasn't read");
     }else{
-        QTextStream in(&csv1);
-        while(!in.atEnd()){
+        QTextStream in1(&csv1);
+        while(!in1.atEnd()){
 
             double Icsv {0.0}, Ucsv {0.0};
-            QString line = in.readLine();
+            QString line = in1.readLine();
             QStringList item = line.split(",");
             Icsv = item.at(0).toDouble();
             Itemp.push_back(Icsv);
             Ucsv = item.at(1).toDouble();
             Ytemp.push_back(Ucsv);
-            i++;
         }
+        csv1.close();
     }
+
+    if(!csv2.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)){
+        qWarning("The csv 2 wasn't read");
+    }else{
+        QTextStream in2(&csv2);
+        while(!in2.atEnd()){
+
+            double Icsv {0.0}, Ucsv {0.0};
+            QString line = in2.readLine();
+            QStringList item = line.split(",");
+            Icsv = item.at(0).toDouble();
+            Ip.push_back(Icsv);
+            Ucsv = item.at(1).toDouble();
+            Yp.push_back(Ucsv);
+        }
+        csv2.close();
+    }
+
+
 
     //Find OCV function from SOC START
     MatrixXd ocv_OCV_m              (4, 1);
@@ -146,6 +172,13 @@ int main(int argc, char *argv[]){
     MatrixXd m_err_linear       (Ytemp.size(), 1);
     MatrixXd m_err_kf           (Ytemp.size(), 1);
 
+    MatrixXd Y_nl                (Ytemp.size(), 1);//Y non linear
+    MatrixXd H_nl                (Ytemp.size(), 2);//2
+    MatrixXd Theta_nl            (2,1);//(2,1)
+
+    double OCV_result           {0.0};
+    double SOC_result           {0.0};
+
     i = 0;
     while(i < Ytemp.size()){
         Y(i,0) = Ytemp.at(i);
@@ -153,6 +186,19 @@ int main(int argc, char *argv[]){
         H_linear(i,1) = Itemp.at(i);
         SOC += Itemp.at(i)/(14.985*3600.0);
         H_linear(i,2) = SOC;
+// The identification part of Rp*(1-exp(-t/(Rp*Cp))) + R0
+// Up = I*Rp*(1-exp(-t/(Rp*Cp))) +I*R0
+        OCV_result              = ocv_Theta_m(0,0)*pow(H_linear(i,2),3.0);
+        OCV_result              += ocv_Theta_m(1,0)*pow(H_linear(i,2),2.0);
+        OCV_result              += ocv_Theta_m(2,0)*H_linear(i,2);
+        OCV_result              += ocv_Theta_m(3,0)*1.0;
+
+        Y_nl(i,0) = Ytemp.at(i) - OCV_result;
+        H_nl(i,0) = prevUp;
+        H_nl(i,1) = prevIp;
+
+        prevUp = Y_nl(i,0);
+        prevIp = Itemp.at(i);
         i++;
     }
 
@@ -161,6 +207,11 @@ int main(int argc, char *argv[]){
 
     std::cout << "Find coefs for Unnewehr universal model:" << std::endl;
     std::cout << Theta_linear << std::endl;
+
+    Theta_nl = (H_nl.transpose()*H_nl).inverse()*H_nl.transpose()*Y_nl;
+
+    std::cout << "Find coefs for non-linear model of Up = I*Rp*(1-exp(-t/(Rp*Cp))) +I*R0:" << std::endl;
+    std::cout << Theta_nl << std::endl;
 
     double K_0 = Theta_linear   (0,0);
     double R = Theta_linear     (1,0);
@@ -198,9 +249,6 @@ int main(int argc, char *argv[]){
     x_hat_k_1                   << SOC, 0.0;
 
     double Y_result             {0.0};
-    double OCV_result           {0.0};
-    double SOC_result           {0.0};
-
     while(i < Ytemp.size()){
 
         Y_linear_SUN_model      = K_0 * H_linear(i,0);           //1 linear
@@ -232,10 +280,15 @@ int main(int argc, char *argv[]){
 
         //Solution part
         Y_result                = K_0 + R*H_linear(i,1) + K_1*x_hat_k(0,0);
+
         OCV_result              = ocv_Theta_m(0,0)*pow(H_linear(i,2),3.0);
         OCV_result              += ocv_Theta_m(1,0)*pow(H_linear(i,2),2.0);
         OCV_result              += ocv_Theta_m(2,0)*H_linear(i,2);
         OCV_result              += ocv_Theta_m(3,0)*1.0;
+
+        Up = H_nl(i,0)*Theta_nl(0,0) + H_nl(i,1)*Theta_nl(1,0);
+        Y_non_linear = OCV_result + Up;
+
         SOC_result              = soc_Theta_m(0,0)*pow(Y(i,0),3.0);
         SOC_result              += soc_Theta_m(1,0)*pow(Y(i,0),2.0);
         SOC_result              += soc_Theta_m(2,0)*Y(i,0);
@@ -250,6 +303,7 @@ int main(int argc, char *argv[]){
         dataDB.append(QString::number(Y_result));
         dataDB.append(QString::number(OCV_result));
         dataDB.append(QString::number(SOC_result));
+        dataDB.append(QString::number(Y_non_linear));
         dataDB.append(QString::number(0.0));
 
         if(!DB->inserIntoTable(TABLE1, dataDB))
@@ -294,7 +348,7 @@ SOC_hat_tilda_k = SOC_hat_k_1 + (I_k_1*delta_t/Cn);
 
 
 */
-    csv1.close();
+
     DB->closeDataBase();
 
     return 0;

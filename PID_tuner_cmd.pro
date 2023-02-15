@@ -26,6 +26,7 @@ DISTFILES += \
 	dups_sql11_22_hppc_2d_try_delta_gel_12_15.db \
 	main_tevenin_model \
 	preparedTable.csv \
+	preparedTableUp.csv \
 	readme.md \
 	toCov_rev_1.ods
 
