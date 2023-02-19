@@ -147,8 +147,23 @@ int main(int argc, char *argv[]){
                                         1.0, 1.0, 1.0, 1.0;
 
     ocv_Theta_m = (ocv_SOC_m.transpose()*ocv_SOC_m).inverse()*ocv_SOC_m.transpose()*ocv_OCV_m;
-    std::cout << "Find coefs for OCV(SOC):" << std::endl;
+    std::cout << "Find coefs for OCV(SOC) 4:" << std::endl;
     std::cout << ocv_Theta_m << std::endl;
+    //Find OCV function from SOC END
+
+    //Find OCV function from SOC START
+    MatrixXd ocv1_OCV_m              (4, 1);
+    MatrixXd ocv1_Theta_m            (5, 1);
+    MatrixXd ocv1_SOC_m              (4, 5);
+    ocv1_OCV_m                       << 48.49, 49.46, 50.31, 51.2;
+    ocv1_SOC_m                       <<  pow(0.7, 4.0), pow(0.7, 3.0), pow(0.7, 2.0), 0.7, 1.0,
+                                         pow(0.8, 4.0), pow(0.8, 3.0), pow(0.8, 2.0), 0.8, 1.0,
+                                         pow(0.9, 4.0), pow(0.9, 3.0), pow(0.9, 2.0), 0.9, 1.0,
+                                         1.0, 1.0, 1.0, 1.0, 1.0;
+
+    ocv1_Theta_m = (ocv1_SOC_m.transpose()*ocv1_SOC_m).inverse()*ocv1_SOC_m.transpose()*ocv1_OCV_m;
+    std::cout << "Find coefs for OCV(SOC) 5:" << std::endl;
+    std::cout << ocv1_Theta_m << std::endl;
     //Find OCV function from SOC END
 
     //Find SOC function from OCV START
@@ -162,7 +177,7 @@ int main(int argc, char *argv[]){
                                         pow(51.2, 3.0), pow(51.2, 2.0), 51.2, 1.0;
 
     soc_Theta_m = (soc_OCV_m.transpose()*soc_OCV_m).inverse()*soc_OCV_m.transpose()*soc_SOC_m;
-    std::cout << "Find coefs for SOC(OCV):" << std::endl;
+    std::cout << "Find coefs for SOC(OCV) 4:" << std::endl;
     std::cout << soc_Theta_m << std::endl;
     //Find SOC function from OCV END
 
@@ -178,6 +193,7 @@ int main(int argc, char *argv[]){
     MatrixXd Theta_nl            (2,1);//(2,1)
 
     double OCV_result           {0.0};
+    double OCV1_result          {0.0};
     double dOCV_result          {0.0};
     double SOC_result           {0.0};
 
@@ -391,6 +407,12 @@ int main(int argc, char *argv[]){
 
         err_nl = abs(Y_non_linear - Y(i,0));
 
+        OCV1_result              = ocv1_Theta_m(0,0)*pow(H_nl(i,0),4.0);
+        OCV1_result              += ocv1_Theta_m(1,0)*pow(H_nl(i,0),3.0);
+        OCV1_result              += ocv1_Theta_m(2,0)*pow(H_nl(i,0),2.0);
+        OCV1_result              += ocv1_Theta_m(3,0)*H_nl(i,0);
+        OCV1_result              += ocv1_Theta_m(4,0)*1.0;
+
         dataDB.clear();
         dataDB.append(QString::number(Itemp.at(i)));
         dataDB.append(QString::number(Y(i,0)));
@@ -401,6 +423,7 @@ int main(int argc, char *argv[]){
         dataDB.append(QString::number(Y_non_linear));
         dataDB.append(QString::number(Y_ekf_result));
         dataDB.append(QString::number(err_nl));
+        dataDB.append(QString::number(OCV1_result/OCV_result));
 
         if(!DB->inserIntoTable(TABLE1, dataDB))
         {

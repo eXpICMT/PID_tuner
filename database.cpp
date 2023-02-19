@@ -51,8 +51,9 @@ bool database::inserIntoTable(QString table, const QVariantList &data)
                                                     TABLE1_U_result_R_0_5     		", "        //  5
                                                     TABLE1_U_result_R_5     		", "        //  6
                                                     TABLE1_U_ekf_result             ", "        //  7
-                                                    TABLE1_Err_non_linear           " ) "       //  8
-                      "VALUES (:F1, :F2, :F3, :F4, :F5, :F6, :F7, :F8, :F9)");
+                                                    TABLE1_Err_non_linear           ", "        //  8
+                                                    TABLE1_OCV_5_order              " ) "       //  9
+                      "VALUES (:F1, :F2, :F3, :F4, :F5, :F6, :F7, :F8, :F9, :F10)");
 
 		query.bindValue(":F1",       data[0]);
 		query.bindValue(":F2",       data[1]);
@@ -63,6 +64,7 @@ bool database::inserIntoTable(QString table, const QVariantList &data)
         query.bindValue(":F7",       data[6]);
         query.bindValue(":F8",       data[7]);
         query.bindValue(":F9",       data[8]);
+        query.bindValue(":F10",      data[9]);
 	}
 	else
 	{
@@ -115,7 +117,8 @@ bool database::createTable()
                     TABLE1_U_result_R_0_5               " NUMERIC    NOT NULL,"
                     TABLE1_U_result_R_5                 " NUMERIC    NOT NULL,"
                     TABLE1_U_ekf_result                 " NUMERIC    NOT NULL,"
-                    TABLE1_Err_non_linear               " NUMERIC    NOT NULL"
+                    TABLE1_Err_non_linear               " NUMERIC    NOT NULL,"
+                    TABLE1_OCV_5_order                  " NUMERIC    NOT NULL"
                     " )"
 					))
 	{
