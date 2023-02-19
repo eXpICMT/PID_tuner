@@ -26,6 +26,7 @@
 #define TABLE1_U_result_R_0_5               "SOC_from_OCV"
 #define TABLE1_U_result_R_5                 "U_non_linear"
 #define TABLE1_U_ekf_result                 "U_ekf_result"
+#define TABLE1_Err_non_linear               "Err_non_linear"
 
 
 

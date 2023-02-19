@@ -98,6 +98,7 @@ int main(int argc, char *argv[]){
     float Up = 0.0;
     float prevUp = 0.0;
     float prevIp = 0.0;
+    float prevSOC = 0.0;
 
     if(!csv1.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)){
         qWarning("The csv 1 wasn't read");
@@ -181,6 +182,7 @@ int main(int argc, char *argv[]){
     double SOC_result           {0.0};
 
     i = 0;
+    prevSOC = SOC;
     while(i < Ytemp.size()){
         Y(i,0) = Ytemp.at(i);
         H_linear(i,0) = 1;
@@ -189,17 +191,18 @@ int main(int argc, char *argv[]){
         H_linear(i,2) = SOC;
 // The identification part of Rp*(1-exp(-t/(Rp*Cp))) + R0
 // Up = I*Rp*(1-exp(-t/(Rp*Cp))) +I*R0
-        OCV_result              = ocv_Theta_m(0,0)*pow(H_linear(i,2),3.0);
-        OCV_result              += ocv_Theta_m(1,0)*pow(H_linear(i,2),2.0);
-        OCV_result              += ocv_Theta_m(2,0)*H_linear(i,2);
+        OCV_result              = ocv_Theta_m(0,0)*pow(prevSOC,3.0);
+        OCV_result              += ocv_Theta_m(1,0)*pow(prevSOC,2.0);
+        OCV_result              += ocv_Theta_m(2,0)*prevSOC;
         OCV_result              += ocv_Theta_m(3,0)*1.0;
 
         Y_nl(i,0) = Ytemp.at(i) - OCV_result;
-        H_nl(i,0) = prevUp;
+        H_nl(i,0) = prevSOC;
         H_nl(i,1) = prevIp;
 
-        prevUp = Y_nl(i,0);
+        //prevUp = Y_nl(i,0);
         prevIp = Itemp.at(i);
+        prevSOC = SOC;
         i++;
     }
 
@@ -211,7 +214,7 @@ int main(int argc, char *argv[]){
 
     Theta_nl = (H_nl.transpose()*H_nl).inverse()*H_nl.transpose()*Y_nl;
 
-    std::cout << "Find coefs for non-linear model of Up = I*Rp*(1-exp(-t/(Rp*Cp))) +I*R0:" << std::endl;
+    std::cout << "Find coefs for non-linear model:" << std::endl;
     std::cout << Theta_nl << std::endl;
 
     /*Standard Kalman filter part initialization START*/
@@ -222,6 +225,7 @@ int main(int argc, char *argv[]){
     int m                       {1}; //amount of measurements (Uout)
     MatrixXd P_k_1              (n,n);
     MatrixXd P_k                (n,n);
+    float q1 {0.0}, sigma2 {0.0};
 
                                    //11      //12       //21       //22
     P_k_1                       << 7.524871, -0.455672, -0.455672, 2.162473;
@@ -232,12 +236,15 @@ int main(int argc, char *argv[]){
     MatrixXd H_k                (m,n);
     H_k                         << K_1, R;
 
+    q1 = 1.0/(14.985*3600.0);
+    sigma2 = 0.073;
+
     MatrixXd Q_k                (n,n);
-    Q_k                         << 0.1, 0.1, 0.1, 1.0;
+    Q_k                         << pow(q1,2.0)*sigma2, q1*sigma2, q1*sigma2, sigma2;
 
     MatrixXd R_k                (m,m);
-
-    R_k                         << 10.0;
+    //0.100955035158673
+    R_k                         << 0.101;
 
     MatrixXd x_hat_k            (n,1), x_hat_k_1        (n,1);
 
@@ -248,9 +255,9 @@ int main(int argc, char *argv[]){
     /*Standard Kalman filter part initialization END*/
 
     /*Extended Kalman filter part initialization START*/
-    double C1 = Theta_nl        (0,0);
-    double C2 = Theta_nl        (1,0);
-    double OCV0                 {51.17};
+    double C1 = Theta_nl        (0,0);// for SOC_k_1
+    double C2 = Theta_nl        (1,0);// for I_k_1
+    //double OCV0                 {51.17};
     int x                       {2}; //amount of states (SOC_k, Up_k)
     int y                       {1}; //amount of measurements (Uout)
     MatrixXd P_ekf_k_1          (x,x);
@@ -260,12 +267,11 @@ int main(int argc, char *argv[]){
     P_ekf_k_1                   << 7.524871, -0.455672, -0.455672, 2.162473;
 
     MatrixXd A_k                (x,x);
-    A_k                         << 1.0, 0.0, 0.0, C1;
-
-    MatrixXd B_k                (x,y);
-    B_k                         << (1.0/(14.985*3600.0)), C2;
+    A_k                         = F_k;
 
     MatrixXd C_k                (y,x);
+
+    MatrixXd H_ekf_k            (y,x);
 
     //Q_k and R_k from Standard KF
 
@@ -275,14 +281,15 @@ int main(int argc, char *argv[]){
 
     MatrixXd K_ekf_k                (x,y);
 
-    MatrixXd u                      (1,1);
+    float err_nl                    {0.0};
+
     /*Extended Kalman filter part initialization END*/
 
     i = 0;
     SOC = 0.999;
 
     x_hat_k_1                   << SOC, 0.0;
-    x_ekf_hat_k_1               << SOC, 0.0;//SOC_0, Up_0
+    x_ekf_hat_k_1               << SOC, 0.0;//SOC_0, I_0
 
     double Y_result             {0.0};
     double Y_ekf_result         {0.0};
@@ -319,12 +326,12 @@ int main(int argc, char *argv[]){
         /*Standard Kalman filter solution part START*/
 
         //time update step
-        u(0,0)                  = H_nl(i,1);
+
         z_ekf_k(0,0)            = Y(i,0);
 
-        x_ekf_hat_k             = A_k*x_ekf_hat_k_1 + B_k*u;
-        std::cout << "x_ekf_hat_k (time update)" << std::endl;
-        std::cout << x_ekf_hat_k << std::endl;
+        x_ekf_hat_k_1(1,0)      = H_nl(i,1);
+
+        x_ekf_hat_k             = A_k*x_ekf_hat_k_1;
 
         P_ekf_k                 = A_k*P_ekf_k_1*A_k.transpose() + Q_k;
 
@@ -334,26 +341,28 @@ int main(int argc, char *argv[]){
         dOCV_result             += 2.0*ocv_Theta_m(1,0)*x_ekf_hat_k(0,0);
         dOCV_result             += ocv_Theta_m(2,0);
 
-        C_k                     << dOCV_result, -1.0;
+        C_k                     << dOCV_result, C1;
 
         K_ekf_k                 = P_ekf_k*C_k.transpose()*((C_k*P_ekf_k*C_k.transpose() + R_k).inverse());
-        std::cout << "K_ekf_k (measurement update)" << std::endl;
-        std::cout << K_ekf_k << std::endl;
 
-        x_ekf_hat_k             = x_ekf_hat_k + K_ekf_k*(z_ekf_k - C_k*x_ekf_hat_k);
+        OCV_result              = ocv_Theta_m(0,0)*pow(x_ekf_hat_k(0,0),2.0);
+        OCV_result              += ocv_Theta_m(1,0)*pow(x_ekf_hat_k(0,0),1.0);
+        OCV_result              += ocv_Theta_m(2,0);
+        OCV_result              += ocv_Theta_m(3,0)/x_ekf_hat_k(0,0);
 
-        std::cout << "x_ekf_hat_k (measurement update)" << std::endl;
-        std::cout << x_ekf_hat_k << std::endl;
+        Up = C1 + OCV_result;
+        H_ekf_k                 << Up , C2;
+
+        x_ekf_hat_k             = x_ekf_hat_k + K_ekf_k*(z_ekf_k - H_ekf_k*x_ekf_hat_k);
 
         P_ekf_k                 = P_ekf_k - K_ekf_k*C_k*P_ekf_k;
 
         //initialization to the next cycle
 
-        x_ekf_hat_k_1           = x_ekf_hat_k;
+        x_ekf_hat_k_1(0,0)      = x_ekf_hat_k(0,0);
 
         P_ekf_k_1               = P_ekf_k;
 
-        SOC += H_nl(i,1)/(14.985*3600.0);
         /*Standard Kalman filter solution part END*/
 
         //Solution part
@@ -364,25 +373,23 @@ int main(int argc, char *argv[]){
         SOC_result              += soc_Theta_m(2,0)*Y(i,0);
         SOC_result              += soc_Theta_m(3,0)*1.0;
 
-        OCV_result              = ocv_Theta_m(0,0)*pow(SOC,3.0);
-        OCV_result              += ocv_Theta_m(1,0)*pow(SOC,2.0);
-        OCV_result              += ocv_Theta_m(2,0)*SOC;
+        OCV_result              = ocv_Theta_m(0,0)*pow(H_nl(i,0),3.0);
+        OCV_result              += ocv_Theta_m(1,0)*pow(H_nl(i,0),2.0);
+        OCV_result              += ocv_Theta_m(2,0)*H_nl(i,0);
         OCV_result              += ocv_Theta_m(3,0)*1.0;
 
-        Up = H_nl(i,0)*Theta_nl(0,0) + H_nl(i,1)*Theta_nl(1,0);
-        //H_nl(i,0) - Up_k_1, H_nl(i,1) - I_k_1
-
-        Y_non_linear = OCV_result + Up;
+        Y_non_linear = OCV_result + C1*H_nl(i,0) + C2*H_nl(i,1);
 
         OCV_result              = ocv_Theta_m(0,0)*pow(x_ekf_hat_k(0,0),3.0);
         OCV_result              += ocv_Theta_m(1,0)*pow(x_ekf_hat_k(0,0),2.0);
         OCV_result              += ocv_Theta_m(2,0)*x_ekf_hat_k(0,0);
         OCV_result              += ocv_Theta_m(3,0)*1.0;
 
-        Up = x_ekf_hat_k(1,0)*Theta_nl(0,0) + H_nl(i,1)*Theta_nl(1,0);
-        Y_ekf_result            = OCV_result + Up;
+        Y_ekf_result            = OCV_result + C1*x_ekf_hat_k(0,0) + C2*x_ekf_hat_k(1,0);
 
         m_err_kf(i,0)           = Y(i,0) - Y_result;
+
+        err_nl = abs(Y_non_linear - Y(i,0));
 
         dataDB.clear();
         dataDB.append(QString::number(Itemp.at(i)));
@@ -393,6 +400,7 @@ int main(int argc, char *argv[]){
         dataDB.append(QString::number(SOC_result));
         dataDB.append(QString::number(Y_non_linear));
         dataDB.append(QString::number(Y_ekf_result));
+        dataDB.append(QString::number(err_nl));
 
         if(!DB->inserIntoTable(TABLE1, dataDB))
         {
