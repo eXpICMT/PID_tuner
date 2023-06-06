@@ -52,8 +52,14 @@ bool database::inserIntoTable(QString table, const QVariantList &data)
                                                     TABLE1_U_result_R_5     		", "        //  6
                                                     TABLE1_U_ekf_result             ", "        //  7
                                                     TABLE1_Err_non_linear           ", "        //  8
-                                                    TABLE1_OCV_5_order              " ) "       //  9
-                      "VALUES (:F1, :F2, :F3, :F4, :F5, :F6, :F7, :F8, :F9, :F10)");
+                                                    TABLE1_OCV_5_order              ", "        //  9
+                                                    TABLE1_I_PID                    ", "        //  10
+                                                    TABLE1_U_PID                    ", "        //  11
+                                                    TABLE1_U_SRCPID                 ", "        //  12
+                                                    TABLE1_I_EKFPID                 ", "        //  13
+                                                    TABLE1_U_EKFPID                 ", "        //  14
+                                                    TABLE1_USRC_EKFPID              " ) "       //  15
+                      "VALUES (:F1, :F2, :F3, :F4, :F5, :F6, :F7, :F8, :F9, :F10, :F11, :F12, :F13, :F14, :F15, :F16)");
 
 		query.bindValue(":F1",       data[0]);
 		query.bindValue(":F2",       data[1]);
@@ -65,6 +71,12 @@ bool database::inserIntoTable(QString table, const QVariantList &data)
         query.bindValue(":F8",       data[7]);
         query.bindValue(":F9",       data[8]);
         query.bindValue(":F10",      data[9]);
+        query.bindValue(":F11",      data[10]);
+        query.bindValue(":F12",      data[11]);
+        query.bindValue(":F13",      data[12]);
+        query.bindValue(":F14",      data[13]);
+        query.bindValue(":F15",      data[14]);
+        query.bindValue(":F16",      data[15]);
 	}
 	else
 	{
@@ -118,7 +130,13 @@ bool database::createTable()
                     TABLE1_U_result_R_5                 " NUMERIC    NOT NULL,"
                     TABLE1_U_ekf_result                 " NUMERIC    NOT NULL,"
                     TABLE1_Err_non_linear               " NUMERIC    NOT NULL,"
-                    TABLE1_OCV_5_order                  " NUMERIC    NOT NULL"
+                    TABLE1_OCV_5_order                  " NUMERIC    NOT NULL,"
+                    TABLE1_I_PID                        " NUMERIC    NOT NULL,"
+                    TABLE1_U_PID                        " NUMERIC    NOT NULL,"
+                    TABLE1_U_SRCPID                     " NUMERIC    NOT NULL,"
+                    TABLE1_I_EKFPID                     " NUMERIC    NOT NULL,"
+                    TABLE1_U_EKFPID                     " NUMERIC    NOT NULL,"
+                    TABLE1_USRC_EKFPID                  " NUMERIC    NOT NULL"
                     " )"
 					))
 	{

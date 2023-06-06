@@ -29,6 +29,13 @@
 #define TABLE1_Err_non_linear               "Err_non_linear"
 #define TABLE1_OCV_5_order                  "OCV_5_order"
 
+#define TABLE1_I_PID                         "I_PID"
+#define TABLE1_U_PID                         "U_PID"
+#define TABLE1_U_SRCPID                      "U_SRCPID"
+
+#define TABLE1_I_EKFPID                     "I_EKFPID"
+#define TABLE1_U_EKFPID                     "U_EKFPID"
+#define TABLE1_USRC_EKFPID                  "USRC_EKFPID"
 
 
 
